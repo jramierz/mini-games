@@ -87,6 +87,26 @@
           <button class="secondary" onclick="openScreen('habitats'); startHabitats()">Abrir</button>
         </div>
 
+        <div class="card">
+          <div class="big-emoji">🦖🦴</div>
+          <h3>Dino Dig</h3>
+          <button class="secondary" onclick="openScreen('dinos'); startDinos()">Abrir</button>
+        </div>
+        
+        <div class="card">
+          <div class="big-emoji">💡</div>
+          <h3>Panel Lumínico</h3>
+          <button class="secondary" onclick="openScreen('panel'); startPanelMode('easy')">
+            Abrir
+          </button>
+        </div>
+
+         <div class="card">
+          <div class="big-emoji">🧩</div>
+          <h3>Rompecabezas</h3>
+          <button class="secondary" onclick="openScreen('puzzle'); startPuzzle();">Abrir</button>
+        </div>
+
       </div>
 
     </section>
@@ -242,7 +262,6 @@
 
 
     <!-- HABITATS -->
-
     <section id="scr-habitats" class="screen">
       <div class="bar">
         <button class="btn" id="btnBackHab">← Inicio</button>
@@ -274,6 +293,66 @@
       </div>
     </section>
 
+    <!-- DINOS -->
+<section id="scr-dinos" class="screen">
+  <div class="bar">
+    <button class="pill" onclick="backHome()">← Inicio</button>
+  </div>
+  <div id="dino-stage" class="dino-stage">
+    <img id="dino-bones" class="dino-bones" src="img/stego-bones.png" alt="">
+    <div id="dino-grid" class="dino-grid"></div>
+
+    <div id="dino-choices" class="dino-choices">
+      <button class="dino-card" data-slot="0">
+        <img class="dino-card-img" alt="">
+      </button>
+      <button class="dino-card" data-slot="1">
+        <img class="dino-card-img" alt="">
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- PANEL LUMÍNICO -->
+<section id="scr-panel" class="screen">
+  <div class="bar">
+    <button class="btn" onclick="backHome()">← Inicio</button>
+    <button style="background-color: #1bd036;" class="pill" onclick="startPanelMode('easy')">Modo fácil</button>
+    <button style="background-color: #e5db12;" class="pill" onclick="startPanelMode('medium')">Modo medio</button>
+    <button style="background-color: #d01b1b; color: #FFFF;" class="pill" onclick="startPanelMode('hard')">Modo difícil</button>
+    <button class="pill" onclick="startPanelMode('mix')">Modo mixto</button>
+    <button style="background-color: #8b1bd0; color: #FFFF;" class="pill" onclick="startPanelMode('infinite')">Modo infinito</button>
+
+    <div id="panel-info" class="tag"></div>
+  </div>
+
+  <div id="panel-board" class="panel-board"></div>
+</section>
+
+<!-- ROMPECABEZAS -->
+<section id="scr-puzzle" class="screen">
+  <div class="bar">
+    <button class="btn" onclick="backHome()">← Inicio</button>
+    <div class="tag" id="pz-tag">Piezas correctas: 0 / 9</div>
+  </div>
+
+  <div class="pz-stage">
+    <!-- Lado izquierdo: área cuadriculada con la imagen guía -->
+    <div class="pz-left">
+      <!-- Imagen completa, un poco opaca, solo de guía -->
+      <div class="pz-base"></div>
+
+      <!-- Cuadrícula donde se rellenan las piezas -->
+      <div id="pz-grid" class="pz-grid"></div>
+    </div>
+
+    <!-- Lado derecho: piezas sueltas -->
+    <div class="pz-right">
+      <h3 class="pz-title">Arrastra las piezas</h3>
+      <div id="pz-pieces" class="pz-pieces"></div>
+    </div>
+  </div>
+</section>
 
   </main>
 

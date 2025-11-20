@@ -431,3 +431,440 @@ background-color:#fffdf5;background-image:radial-gradient(circle, rgba(255, 208,
   .hab-letrero{ width: clamp(120px, 28vw, 220px); top: 10px; }
 }
 
+/* ===== Dinos: desenterrar fósiles ===== */
+
+.dino-stage{
+  position:relative;
+  width:min(900px, 96%);
+  height:clamp(420px, 60vh, 520px);
+  margin:18px auto;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  background:#A56D4A;                 /* fondo clarito para que la tierra destaque */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.dino-bones{
+  width: 550px;
+  height: 550;
+  object-fit:contain;
+  pointer-events:none;
+  z-index:1;
+}
+
+/* Capa de tierra por encima del fósil */
+.dino-grid{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns:repeat(10,1fr);   /* 10 columnas = DINO_TILE_COLS */
+  grid-auto-rows:1fr;
+  border-radius:20px;
+  z-index:2;
+}
+
+.dino-tile{
+  background:
+    radial-gradient(circle at 10% 20%, rgba(255,255,255,.25) 0 20%, transparent 22% 100%),
+    radial-gradient(circle at 80% 70%, rgba(0,0,0,.12) 0 20%, transparent 22% 100%),
+    #b56a35;
+  box-shadow:inset 0 0 4px rgba(0,0,0,.3);
+  opacity:1;
+  transition:opacity .18s ease-out;
+  pointer-events:auto;
+}
+
+/* cuando “se quita” la tierra */
+.dino-tile.gone{
+  opacity:0;
+  pointer-events:none;
+}
+
+/* ----- Tarjetas de dinosaurios sobre el stage ----- */
+
+.dino-choices{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  padding:20px;
+  z-index:3;
+  opacity:0;
+  pointer-events:none;
+  transition: opacity .25s ease, transform .25s ease;
+  transform: translateY(10px);
+}
+
+/* Cuando se muestran las tarjetas */
+.dino-choices.show{
+  opacity:1;
+  pointer-events:auto;
+  transform: translateY(0);
+}
+
+.dino-card{
+  background:#fff;
+  border-radius:20px;
+  padding:16px 18px;
+  border:2px solid transparent;
+  box-shadow:0 12px 28px rgba(15,23,42,.25);
+  cursor:pointer;
+  transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+  will-change: transform, box-shadow, border-color;
+}
+
+.dino-card img{
+  display:block;
+  width:350px;
+  height:auto;
+  object-fit:contain;
+}
+
+.dino-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 18px 32px rgba(15,23,42,.35);
+}
+
+
+
+.dino-card:focus,
+.dino-card:focus-visible,
+.dino-card img:focus,
+.dino-card img:focus-visible,
+.dino-card-img:focus,
+.dino-card-img:focus-visible
+.dino-card-img img:focus,
+.dino-card-img img:focus-visible{
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.dino-card img,
+.dino-bones{
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+@keyframes cardGlowGreen{
+  0%{
+    box-shadow:0 12px 28px rgba(15,23,42,.25);
+  }
+  50%{
+    box-shadow:
+      0 0 0 3px rgba(34,197,94,.75),
+      0 16px 32px rgba(22,163,74,.65);
+  }
+  100%{
+    box-shadow:0 12px 28px rgba(15,23,42,.25);
+  }
+}
+
+@keyframes cardGlowRed{
+  0%{
+    box-shadow:0 12px 28px rgba(15,23,42,.25);
+  }
+  50%{
+    box-shadow:
+      0 0 0 3px rgba(239,68,68,.8),
+      0 16px 32px rgba(185,28,28,.6);
+  }
+  100%{
+    box-shadow:0 12px 28px rgba(15,23,42,.25);
+  }
+}
+
+.dino-card.correct{
+  background-color: #22c55ea6;
+  border-color:#22c55e;
+  animation: cardGlowGreen .55s ease-out 0s 2 alternate;
+}
+
+.dino-card.wrong{
+  background-color: #ef4444a6;
+  border-color:#ef4444;
+  animation: shakeCard .32s ease, cardGlowRed .55s ease-out 0s 2 alternate;
+}
+
+/* ===== Panel lumínico ===== */
+
+.panel-mode-buttons{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  justify-content:center;
+  margin:10px auto;
+}
+
+.panel-board{
+  width:min(520px, 90vw);
+  height:min(520px, 90vw);
+  margin:16px auto 8px;
+  border-radius:24px;
+  padding:18px;
+  box-shadow:var(--shadow);
+  background:linear-gradient(135deg,#e0f2fe,#ffffff);
+  display:grid;
+  gap:14px;
+  place-items:center;
+}
+
+.panel-cell{
+  border-radius:20px;
+  border:3px solid #dbeafe;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.65) 0 35%, transparent 40% 100%),
+    radial-gradient(circle at 80% 70%, rgba(15,23,42,.18) 0 32%, transparent 36% 100%),
+    #93c5fd;
+  box-shadow:0 8px 18px rgba(15,23,42,.15);
+  cursor:pointer;
+  transition:
+    transform .12s ease,
+    box-shadow .12s ease,
+    border-color .12s ease,
+    background .12s ease;
+}
+
+.panel-cell:focus-visible{
+  outline:3px solid #2563eb;
+  outline-offset:2px;
+}
+
+/* Tamaños: se calculan con grid, pero aseguramos botones grandes */
+.panel-board.panel-2x2 .panel-cell{ min-width:90px; min-height:90px; }
+.panel-board.panel-3x2 .panel-cell{ min-width:80px; min-height:80px; }
+.panel-board.panel-3x3 .panel-cell{ min-width:72px; min-height:72px; }
+
+/* Encendido */
+.panel-cell.lit{
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,.9) 0 40%, transparent 46% 100%),
+    radial-gradient(circle at 80% 70%, rgba(56,189,248,.7) 0 34%, transparent 40% 100%),
+    #60a5fa;
+  box-shadow:
+    0 0 0 3px rgba(191,219,254,1),
+    0 0 24px rgba(37,99,235,.85);
+  transform:scale(1.03);
+}
+
+/* Correcto: destello verde suave */
+.panel-cell.correct{
+  animation:panelCorrectFlash .35s ease;
+  border-color:#22c55e;
+}
+
+/* Incorrecto: titileo rojo + shake mini */
+.panel-cell.wrong{
+  animation:panelWrongFlash .35s ease;
+  border-color:#ef4444;
+}
+
+@keyframes panelCorrectFlash{
+  0%  { box-shadow:0 0 0 0 rgba(34,197,94,.0); }
+  30% { box-shadow:0 0 28px 4px rgba(34,197,94,.8); }
+  100%{ box-shadow:0 0 0 0 rgba(34,197,94,.0); }
+}
+
+@keyframes panelWrongFlash{
+  0%  { transform:translateX(0); box-shadow:0 0 0 0 rgba(239,68,68,.0); }
+  20% { transform:translateX(-4px); box-shadow:0 0 22px 4px rgba(239,68,68,.75); }
+  40% { transform:translateX(4px); }
+  60% { transform:translateX(-3px); }
+  100%{ transform:translateX(0); box-shadow:0 0 0 0 rgba(239,68,68,.0); }
+}
+
+.panel-message{
+  text-align:center;
+  font-size:1.05rem;
+  margin-bottom:10px;
+  min-height:1.6em;
+}
+
+/* ===== Panel lumínico ===== */
+
+.panel-board{
+  width: min(640px, 96%);
+  aspect-ratio: 4 / 3;
+  margin: 18px auto;
+  padding: 32px;
+  border-radius: 28px;
+  background: linear-gradient(145deg,#eef5ff,#ffffff);
+  box-shadow: 0 18px 40px rgba(15,23,42,.16);
+  display: grid;
+  grid-template-rows: repeat(var(--panel-rows,2), 1fr);
+  grid-template-columns: repeat(var(--panel-cols,2), 1fr);
+  gap: 32px;
+  place-items: center;
+}
+
+.panel-btn{
+  width: clamp(100px, 18vh, 130px);
+  height: clamp(100px, 18vh, 130px);
+  border-radius: 26px;
+  border: none;
+  background: var(--panel-color, #93c5fd); /* se define en JS por botón */
+  box-shadow: 0 10px 22px rgba(15,23,42,.22);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+
+.panel-btn.lit{
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 0 4px rgba(255,255,255,.9),
+    0 0 20px rgba(15,23,42,.35);
+  filter: brightness(1.25);
+}
+
+.panel-btn.disabled{
+  cursor: default;
+  opacity: .75;
+}
+
+/* (Opcional) texto de modo y progreso */
+#panel-mode-label,
+#panel-info{
+  margin-left: 8px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(15,23,42,.06);
+  font-size: .9rem;
+}
+
+/*PUZZLE*/
+/* ===== Rompecabezas ===== */
+
+.pz-stage{
+  margin:18px auto 0;
+  max-width:1000px;
+  display:flex;
+  gap:26px;
+  align-items:center;
+  justify-content:center;
+  padding:10px;
+}
+
+/* Lado izquierdo (tablero) */
+.pz-left{
+  position:relative;
+  flex:1 1 60%;
+  aspect-ratio:4/3;
+  border-radius:26px;
+  background:#e5f0ff;
+  box-shadow:0 18px 40px rgba(15,23,42,.25);
+  overflow:hidden;
+}
+
+/* Imagen base opaca */
+.pz-base{
+  position:absolute;
+  inset:0;
+  background-image:url("img/gallinas-rc.png"); /* <-- tu imagen */
+  background-size:cover;
+  background-position:center;
+  opacity:.35;                 /* un poco opaca */
+  pointer-events:none;
+}
+
+/* Cuadrícula donde encajan las piezas */
+.pz-grid{
+  position:absolute;
+  inset:16px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);   /* 3x3 */
+  grid-auto-rows:1fr;
+  gap:8px;
+}
+
+/* Cada “casilla” del rompecabezas */
+.pz-cell{
+  position:relative;
+  border-radius:16px;
+  border:2px dashed rgba(148,163,184,.9);
+  background:rgba(255,255,255,.35);
+  box-shadow:
+    inset 0 0 0 1px rgba(148,163,184,.18),
+    0 4px 8px rgba(15,23,42,.15);
+  overflow:hidden;
+  transition:border-color .18s ease, box-shadow .18s ease, background .18s ease;
+}
+
+/* Cuando la casilla ya tiene la pieza correcta */
+.pz-cell.filled{
+  border-style:solid;
+  border-color:#22c55e;
+  background-repeat:no-repeat;
+  background-size:300% 300%;  /* 3x3 → 300% */
+  background-position:var(--pz-x) var(--pz-y);
+  box-shadow:0 12px 24px rgba(15,23,42,.25);
+}
+
+/* Lado derecho (piezas) */
+.pz-right{
+  flex:0 0 260px;
+  min-height:320px;
+  border-radius:26px;
+  background:rgba(255,255,255,.95);
+  box-shadow:0 16px 36px rgba(15,23,42,.28);
+  padding:14px 16px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.pz-title{
+  font-size:1rem;
+  font-weight:600;
+  color:#0f172a;
+  text-align:center;
+  margin-bottom:6px;
+}
+
+.pz-pieces{
+  position:relative;
+  flex:1;
+}
+
+/* Piezas del rompecabezas */
+.pz-piece{
+  position:absolute;
+  width:90px;
+  height:90px;
+  border-radius:18px;
+  background-image:url("img/gallinas-rc.png");
+  background-size:300% 300%;   /* 3x3 */
+  background-position:var(--pz-x) var(--pz-y);
+  background-repeat:no-repeat;
+  box-shadow:0 14px 26px rgba(15,23,42,.35);
+  cursor:grab;
+  transition:box-shadow .12s ease, transform .12s ease;
+}
+
+.pz-piece.dragging{
+  cursor:grabbing;
+  box-shadow:0 16px 32px rgba(15,23,42,.45);
+  transform:scale(1.03);
+}
+
+/* shake cuando es incorrecta */
+@keyframes pz-shake{
+  0%{ transform:translateX(0); }
+  25%{ transform:translateX(-6px); }
+  50%{ transform:translateX(6px); }
+  100%{ transform:translateX(0); }
+}
+
+.pz-piece.shake{
+  animation:pz-shake .22s ease;
+}
+
+
+
+
+
+
+

@@ -61,7 +61,7 @@ function showOverlay(seconds=8, onContinue){
 //#endregion
 
 //#region Ruteo
-const SCREENS = ['balloons','keys','drag','clicks','maze','cheese','sort','habitats'];
+const SCREENS = ['balloons','keys','drag','clicks','maze','cheese','sort','habitats','dinos','panel'];
 let currentGameId = null;
 
 function openScreen(name){
@@ -69,7 +69,7 @@ function openScreen(name){
   $('#home')?.classList.remove('active');
   SCREENS.forEach(id => $('#scr-'+id)?.classList.remove('active'));
   $('#scr-'+name)?.classList.add('active');
-  const map={balloons:'Globos',keys:'Piano',drag:'Casitas',clicks:'Clic',maze:'Laberinto',cheese:'Ratón y Queso', sort:'Sorting de Colores', habitats:'Habitats'};
+  const map={balloons:'Globos',keys:'Piano',drag:'Casitas',clicks:'Clic',maze:'Laberinto',cheese:'Ratón y Queso', sort:'Sorting de Colores', habitats:'Habitats de animales', dinos:'Dino dig desentierra el dinosaurio', panel:'Panel Luminoso de colores'};
   $('#tagMode').textContent='Modo: '+(map[name]||'Inicio');
 
   // AUTO START de cada juego
@@ -81,10 +81,12 @@ function openScreen(name){
   else if (name === 'cheese') startCheese(true);
   else if (name === 'sort') startSort(true);
   else if (name === 'habitats') startHabitats();
-
+  else if (name === 'dinos') startDinos();
+  else if (name === 'panel') startPanelMode();
 
 }
 function backHome(){
+    stopPanelGame?.();
   SCREENS.forEach(id => $('#scr-'+id)?.classList.remove('active'));
   $('#home')?.classList.add('active');
   $('#tagMode').textContent='Modo: Inicio';
@@ -97,7 +99,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 //#region 3 Juegos random
 // ==== Lista de juegos disponibles (agrega aquí los nuevos) ====
-const PLAY_SET = ['balloons','drag','maze','cheese','sort','habitats'];
+const PLAY_SET = ['balloons','drag','maze','cheese','sort','habitats','dinos','panel'];
 
 let playOrder = [];
 let playIndex = 0;
@@ -123,6 +125,10 @@ function launchCurrentPlayGame(){
   else if (id === 'cheese')   startCheese();
   else if (id === 'sort')     startSort();
   else if (id === 'habitats') startHabitats();
+  else if (id === 'dinos')    startDinos();
+  else if (id === 'panel')    startPanelMode();
+
+
 }
 
 // Llamar SIEMPRE al terminar cada juego
@@ -157,6 +163,9 @@ function restartCurrentGame(){
       isActive('clicks')  ?'clicks':
       isActive('maze')    ?'maze':
       isActive('cheese')  ?'cheese': null;
+      isActive('dinos')   ?'dinos': null;
+      isActive('panel')  ?'panel': null;
+
   }
   if(currentGameId==='balloons'){ openScreen('balloons'); startBalloons(); }
   else if(currentGameId==='keys'){ openScreen('keys'); startPianoKeys(); }
@@ -164,6 +173,10 @@ function restartCurrentGame(){
   else if(currentGameId==='clicks'){ openScreen('clicks'); startClicks(); }
   else if(currentGameId==='maze'){ openScreen('maze'); startMaze(true); }
   else if(currentGameId==='cheese'){ openScreen('cheese'); startCheese(true); }
+  else if(currentGameId==='dinos'){ openScreen('dinos'); startDinos(true); }
+  else if(currentGameId==='panel'){ openScreen('panel'); startPanelMode(true); }
+
+
 }
 //#endregion
 
@@ -604,6 +617,8 @@ const tagSort      = $('#tagSort');
 const sortWrap     = $('#sortWrap');
 const btnSortSpeak = $('#btnSortSpeak');
 const shelfEl      = document.querySelector('#scr-sort .shelf');
+let audioLocked = false;
+
 
 const COLORS = [
   {key:'rojo',     label:'Rojo',     cls:'clr-rojo'},
@@ -630,6 +645,9 @@ function lockSort(on) {
   shelfEl?.classList.toggle('locked', sortLocked);
 }
 
+function lockAudio(on) {
+  audioLocked = !!on;
+}
 /* ---------- Audios ---------- */
 const AUDIO_INSTRUCTION = {
   rojo:     new Audio('audio/color_rojo.mp3'),
@@ -637,7 +655,7 @@ const AUDIO_INSTRUCTION = {
   morado:   new Audio('audio/color_morado.mp3'),
   azul:     new Audio('audio/color_azul.mp3')
 };
-const AUDIO_WRONG  = new Audio('audio/color_incorrecto.mp3');
+const AUDIO_WRONG = new Audio('audio/color_incorrecto.mp3');
 const AUDIO_NEXT   = [
   new Audio('audio/congrats1.mp3'),
   new Audio('audio/congrats2.mp3'),
@@ -657,22 +675,37 @@ function stopAllColorAudios(){
   }catch{}
 }
 
-function playAudio(audio, fallbackMs = 1500){
-  return new Promise(res=>{
-    if(!audio) return res();
-    stopAllColorAudios();
-    try{
-      audio.currentTime = 0;
-      const done = ()=>{ audio.onended=null; res(); };
+async function playAudio(audio, fallbackMs = 1500){
+  if (!audio || audioLocked) return;
+
+  stopAllColorAudios();   // Corta cualquier audio activo
+
+  try {
+    lockAudio(true);      // Bloquea audio mientras se reproduce
+
+    audio.currentTime = 0;
+
+    await new Promise(res => {
+      const done = () => {
+        audio.onended = null;
+        res();
+      };
+
       audio.onended = done;
+
       const p = audio.play();
-      if (p?.catch) p.catch(()=> setTimeout(done, fallbackMs));
-      setTimeout(()=>{ if(audio.onended) done(); }, fallbackMs + 3000);
-    }catch{
-      setTimeout(res, fallbackMs);
-    }
-  });
+      if (p?.catch) p.catch(() => setTimeout(done, fallbackMs));
+
+      setTimeout(() => {
+        if (audio.onended) done();
+      }, fallbackMs + 1000);
+    });
+
+  } finally {
+    lockAudio(false);
+  }
 }
+
 function playOneOf(arr){ return playAudio(arr[Math.floor(Math.random()*arr.length)]); }
 
 /* ---------- UI progreso ---------- */
@@ -742,19 +775,20 @@ function scatterBalls(){
       el.style.left = x+'px'; el.style.top = y+'px';
       field.appendChild(el);
 
-      el.addEventListener('pointerdown', e=>{
+            el.addEventListener('pointerdown', e => {
         if (sortLocked) return;
+
         dragBall = el;
         el.setPointerCapture?.(e.pointerId);
         el.classList.add('dragging');
 
         const br = el.getBoundingClientRect();
-        offX = e.clientX - br.left; offY = e.clientY - br.top;
+        offX = e.clientX - br.left;
+        offY = e.clientY - br.top;
 
-        if (!el.dataset.ox || !el.dataset.oy) {
-          el.dataset.ox = parseFloat(el.style.left) || 0;
-          el.dataset.oy = parseFloat(el.style.top)  || 0;
-        }
+        el.dataset.ox = parseFloat(el.style.left) || 0;
+        el.dataset.oy = parseFloat(el.style.top)  || 0;
+
         ensureAudio();
       });
     }
@@ -770,45 +804,64 @@ function getBinAt(x,y){
 }
 
 /* ---------- Drag global ---------- */
-window.addEventListener('pointermove', e=>{
-  if(!dragBall) return;
+window.addEventListener('pointermove', e => {
+  if (!dragBall) return;
   const fr = field.getBoundingClientRect();
   dragBall.style.left = (e.clientX - fr.left - offX) + 'px';
   dragBall.style.top  = (e.clientY - fr.top  - offY) + 'px';
 });
 
-window.addEventListener('pointerup', e=>{
-  if(!dragBall) return;
-  const ball = dragBall; dragBall = null;
+window.addEventListener('pointerup', e => {
+  if (!dragBall) return;
+
+  const ball = dragBall;
+  dragBall = null;
   ball.classList.remove('dragging');
 
-  if (sortLocked) { bounceBack(ball); return; }
+  if (sortLocked) {
+    bounceBack(ball);
+    return;
+  }
 
   const drop = getBinAt(e.clientX, e.clientY);
   const colorBall = ball.dataset.color;
 
-  const isRightBin   = !!drop && drop.dataset.color === colorBall;
-  const isRightColor = colorBall === targetColorKey;
+  if (!drop) {
+    return;
+  }
 
-  if(isRightBin && isRightColor){
+  const binColor      = drop.dataset.color;
+  const isRightBin    = binColor === colorBall;
+  const isRightTarget = binColor === targetColorKey;
+  const isFullCorrect = isRightBin && isRightTarget;
+
+  if (isFullCorrect) {
     const fr   = field.getBoundingClientRect();
     const hole = drop.querySelector('.bin-hole').getBoundingClientRect();
-    ball.style.left = (hole.left - fr.left + hole.width/2 - 24) + 'px';
-    ball.style.top  = (hole.top  - fr.top  + hole.height/2 - 24) + 'px';
-    ball.style.pointerEvents='none';
 
-    confettiIn(field, hole.left - fr.left + hole.width/2, hole.top - fr.top + hole.height/2, 14);
-    beep(720,.08,'sine',.22);
+    ball.style.left = (hole.left - fr.left + hole.width  / 2 - 24) + 'px';
+    ball.style.top  = (hole.top  - fr.top  + hole.height / 2 - 24) + 'px';
+    ball.style.pointerEvents = 'none';
+
+    confettiIn(
+      field,
+      hole.left - fr.left + hole.width  / 2,
+      hole.top  - fr.top  + hole.height / 2,
+      14
+    );
+    beep(720, .08, 'sine', .22);
+
     drop.classList.add('correct');
-    clearTimeout(drop._t); drop._t=setTimeout(()=>drop.classList.remove('correct'), 450);
+    clearTimeout(drop._t);
+    drop._t = setTimeout(() => drop.classList.remove('correct'), 450);
 
     placedTotal++;
-    placedPerColor[colorBall] = (placedPerColor[colorBall]||0) + 1;
+    placedPerColor[colorBall] = (placedPerColor[colorBall] || 0) + 1;
     tagSort.textContent = `Correctos: ${placedTotal} / ${TOTAL}`;
     setSortSegments(placedTotal, TOTAL);
 
-    if (placedPerColor[targetColorKey] >= TOTAL_PER_COLOR){
-      (async ()=>{
+    if (placedPerColor[targetColorKey] >= TOTAL_PER_COLOR) {
+      (async () => {
         lockSort(true);
         await playOneOf(AUDIO_NEXT);
         await chooseNextTarget(true);
@@ -816,19 +869,21 @@ window.addEventListener('pointerup', e=>{
       })();
     } else if (placedTotal >= TOTAL) {
       if (playActive) {
-    onGameCompleted();
+        onGameCompleted();
       } else {
-    showOverlay(8, ()=> startSort());
+        showOverlay(8, () => startSort());
       }
     }
   } else {
-    playAudio(AUDIO_WRONG, 900).then(()=> playAudio(AUDIO_INSTRUCTION[targetColorKey], 1200));
-    beep(240,.07,'square',.14);
-    bounceBack(ball);
+    
+    playAudio(AUDIO_WRONG, 900)
+      .then(() => playAudio(AUDIO_INSTRUCTION[targetColorKey], 1200));
+    beep(240, .07, 'square', .14);
+    bounceBack(ball); 
   }
 });
 
-function bounceBack(ball){
+function bounceBack(ball) {
   const fr   = field.getBoundingClientRect();
   const br   = ball.getBoundingClientRect();
   const ox   = parseFloat(ball.dataset.ox) || 0;
@@ -839,14 +894,22 @@ function bounceBack(ball){
   const dy   = oy - curY;
 
   const anim = ball.animate(
-    [{ transform:'translate(0,0)' },{ transform:`translate(${dx}px,${dy}px)` }],
-    { duration: 220, easing: 'cubic-bezier(.2,.9,.2,1)' }
+    [
+      { transform: 'translate(0,0)' },
+      { transform: `translate(${dx}px,${dy}px)` }
+    ],
+    {
+      duration: 220,
+      easing: 'cubic-bezier(.2,.9,.2,1)'
+    }
   );
-  anim.onfinish = ()=>{
+
+  anim.onfinish = () => {
     ball.style.left = ox + 'px';
     ball.style.top  = oy + 'px';
   };
 }
+
 
 /* ---------- Arranque / reinicio ---------- */
 btnSortSpeak?.addEventListener('click', ()=> {
@@ -1136,6 +1199,914 @@ habAnimal.addEventListener('mousedown', e=>{
 
 //#endregion
 
+//#region Dinos
+const dinoStage   = document.getElementById('dino-stage');
+const dinoBones   = document.getElementById('dino-bones');
+const dinoGrid    = document.getElementById('dino-grid');
+const dinoChoices = document.getElementById('dino-choices');
+const dinoCards   = [];
+
+/* Preguntas cuando se revelan los huesos */
+const DINO_QUESTIONS = [
+  new Audio('audio/dino-question1.mp3'),
+  new Audio('audio/dino-question2.mp3')
+];
+
+/* Felicitaciones al acertar */
+const DINO_CONGRATS = [
+  new Audio('audio/congrats1.mp3'),
+  new Audio('audio/congrats2.mp3'),
+  new Audio('audio/correct_hab2.mp3')
+];
+
+/* Incorrectos */
+const DINO_WRONG = [
+  new Audio('audio/incorrect-dino1.mp3'),
+  new Audio('audio/incorrect-dino2.mp3')
+];
+
+const DINO_PAIRS = [
+  { id: 'stego',   bones: 'stego-bones'   },
+  { id: 'trex',    bones: 'trex-bones'    },
+  { id: 'bronto',  bones: 'bronto-bones'  },
+  { id: 'tricera', bones: 'tricera-bones' },
+];
+
+const DINO_OPTIONS = [
+  { id: 'ankylo' },
+  { id: 'para'   },
+  { id: 'spino'  },
+  { id: 'styraco'}
+];
+
+const DINO_TOTAL_CHOICES = 2;
+
+const ALL_DINOS = [
+  ...DINO_PAIRS.map(p => p.id),
+  ...DINO_OPTIONS.map(o => o.id)
+];
+
+const DINO_TILE_ROWS   = 5;
+const DINO_TILE_COLS   = 10;
+const DINO_REVEAL_RATIO = 0.60;
+
+const dinoSweepAudio = new Audio('audio/sweep-broom.mp3');
+dinoSweepAudio.loop   = true;
+dinoSweepAudio.volume = 0.8;
+
+let dinoQueue = [];
+let dinoIndex = 0;
+let dinoTotalTiles = 0;
+let dinoRevealedTiles = 0;
+let dinoChoicesShown = false;
+let dinoRoundLocked  = false;
+let dinoBrushing     = false;
+let dinoQuestionPlayed = false;
+
+[...DINO_QUESTIONS, ...DINO_CONGRATS, ...DINO_WRONG].forEach(a=>{
+  a.preload = 'auto';
+  a.volume  = 0.95;
+});
+
+function dinoStopAllAudio(){
+  [...DINO_QUESTIONS, ...DINO_CONGRATS, ...DINO_WRONG].forEach(a=>{
+    try { a.pause(); a.currentTime = 0; } catch {}
+  });
+}
+
+function dinoPlayOnly(audio, onended){
+  dinoStopAllAudio();
+  try{
+    audio.currentTime = 0;
+    if (onended) {
+      const h = () => {
+        audio.removeEventListener('ended', h);
+        onended();
+      };
+      audio.addEventListener('ended', h);
+    }
+    audio.play().catch(()=>{});
+  }catch{}
+}
+
+
+function dinoRandom(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+
+function dinoSetBonesImage(pair){
+  if (!dinoBones) return;
+  dinoBones.src = `img/${pair.bones}.png`;
+}
+
+function dinoBuildGrid(){
+  if (!dinoGrid) return;
+  dinoGrid.innerHTML     = '';
+  dinoTotalTiles         = 0;
+  dinoRevealedTiles      = 0;
+
+  for (let r = 0; r < DINO_TILE_ROWS; r++){
+    for (let c = 0; c < DINO_TILE_COLS; c++){
+      const tile = document.createElement('div');
+      tile.className   = 'dino-tile';
+      tile.dataset.hit = '0';
+      dinoGrid.appendChild(tile);
+      dinoTotalTiles++;
+    }
+  }
+}
+
+function dinoCheckRevealProgress(){
+  if (dinoChoicesShown) return;
+  if (!dinoTotalTiles)  return;
+
+  const ratio = dinoRevealedTiles / dinoTotalTiles;
+  if (ratio >= DINO_REVEAL_RATIO){
+  dinoAskThenShowChoices();
+}
+
+}
+
+function dinoAskThenShowChoices(){
+  if (dinoChoicesShown || dinoQuestionPlayed) return;
+
+  dinoQuestionPlayed = true;
+
+  const question = dinoRandom(DINO_QUESTIONS);
+
+  if (!question){
+    dinoShowChoices();
+    return;
+  }
+
+  dinoPlayOnly(question, () => {
+    const scrDinos = document.getElementById('scr-dinos');
+    const stillActive = scrDinos && scrDinos.classList.contains('active');
+
+    if (!stillActive || dinoChoicesShown) return;
+
+    dinoShowChoices();
+  });
+}
+
+function dinoShowChoices(){
+  if (!dinoChoices) return;
+
+  const current = dinoQueue[dinoIndex];
+  if (!current) return;
+
+  dinoChoicesShown = true;
+  dinoRoundLocked  = false;
+
+  dinoChoices.innerHTML = "";
+  dinoCards.length = 0;
+
+  const correctId = current.id;
+  const distractors = ALL_DINOS.filter(id => id !== correctId);
+  const chosenDistractors = shuffle(distractors).slice(0, 1);
+  const finalOptions = shuffle([correctId, ...chosenDistractors]);
+
+  finalOptions.forEach(id => {
+    const btn = document.createElement("button");
+    btn.className = "dino-card";
+    btn.dataset.dinoId = id;
+
+    const img = document.createElement("img");
+    img.className = "dino-card-img";
+    img.src = `img/${id}.png`;
+    img.alt = id;
+
+    btn.appendChild(img);
+    dinoChoices.appendChild(btn);
+
+    btn.addEventListener("click", ()=> handleDinoChoice(btn));
+
+    dinoCards.push(btn);
+  });
+
+  dinoChoices.classList.add('show');
+}
+
+
+function dinoHideChoices(){
+  if (!dinoChoices) return;
+  dinoChoices.classList.remove('show');
+  dinoChoicesShown = false;
+  dinoRoundLocked  = false;
+}
+
+function loadCurrentDino(){
+  const current = dinoQueue[dinoIndex];
+  if (!current) return;
+
+  dinoRoundLocked  = false;
+  dinoChoicesShown = false;
+  dinoQuestionPlayed = false;
+
+  dinoHideChoices();
+  dinoSetBonesImage(current);
+  dinoBuildGrid();
+}
+
+function startDinos(){
+  if (!dinoStage) return;
+
+  dinoQueue        = shuffle(DINO_PAIRS.slice());
+  dinoIndex        = 0;
+  dinoRoundLocked  = false;
+  dinoChoicesShown = false;
+
+  dinoHideChoices();
+  loadCurrentDino();
+}
+
+function handleDinoChoice(btn){
+  if (!dinoChoicesShown || dinoRoundLocked) return;
+
+  const current = dinoQueue[dinoIndex];
+  if (!current) return;
+
+  const correctId = current.id;
+  const chosenId  = btn.dataset.dinoId;
+  const isCorrect = (chosenId === correctId);
+
+  if (isCorrect){
+    dinoRoundLocked = true;
+
+    btn.classList.add('correct');
+    btn.classList.remove('wrong');
+
+    dinoPlayOnly(dinoRandom(DINO_CONGRATS));
+
+    confettiIn?.(dinoStage, dinoStage.clientWidth/2, dinoStage.clientHeight/2, 22);
+    beep(900,.10,'sine',.2);
+
+    setTimeout(()=>{
+      dinoIndex++;
+      if (dinoIndex >= dinoQueue.length){
+        dinoHideChoices();
+        onGameCompleted?.();
+      } else {
+        dinoHideChoices();
+        loadCurrentDino();
+      }
+    }, 1100);
+
+  } else {
+    dinoPlayOnly(dinoRandom(DINO_WRONG));
+    beep(220,.09,'square',.18);
+
+    btn.classList.add('wrong');
+    btn.classList.remove('correct');
+
+    btn.animate(
+      [
+        {transform:'translateX(0)'},
+        {transform:'translateX(-4px)'},
+        {transform:'translateX(4px)'},
+        {transform:'translateX(0)'}
+      ],
+      { duration:260 }
+    );
+  }
+}
+
+function dinoHitTileAt(x,y){
+  const el = document.elementFromPoint(x,y);
+  if (!el || !el.classList || !el.classList.contains('dino-tile')) return;
+
+  if (el.dataset.hit === '1') return;
+
+  el.dataset.hit = '1';
+  el.classList.add('gone');
+  dinoRevealedTiles++;
+  dinoCheckRevealProgress();
+}
+
+dinoStage?.addEventListener('pointerdown', e=>{
+  if (paused) return;
+  if (!dinoGrid) return;
+
+  ensureAudio?.();
+  dinoBrushing = true;
+
+  try{
+    dinoSweepAudio.currentTime = 0;
+    dinoSweepAudio.play().catch(()=>{});
+  }catch{}
+
+  dinoHitTileAt(e.clientX, e.clientY);
+});
+
+window.addEventListener('pointermove', e=>{
+  if (!dinoBrushing) return;
+  dinoHitTileAt(e.clientX, e.clientY);
+});
+
+window.addEventListener('pointerup', ()=>{
+  if (!dinoBrushing) return;
+  dinoBrushing = false;
+
+  try{
+    dinoSweepAudio.pause();
+    dinoSweepAudio.currentTime = 0;
+  }catch{}
+});
+
+//#endregion
+
+//#region Panel colores
+const scrPanel   = document.getElementById('scr-panel');
+const panelBoard = document.getElementById('panel-board');
+const panelInfo  = document.getElementById('panel-info');
+const panelModeLabel  = document.getElementById('panelModeLabel');
+const panelRoundLabel = document.getElementById('panelRoundLabel');
+
+function isPanelActive() {
+  return !!scrPanel && scrPanel.classList.contains('active');
+}
+
+const PANEL_COLORS = [
+  '#f97373',
+  '#facc15',
+  '#4ade80',
+  '#60a5fa',
+  '#a855f7',
+  '#fb923c',
+  '#22d3ee',
+  '#fb7185',
+  '#a3e635'
+];
+
+// Configuración de modos
+const PANEL_CONFIG = {
+  easy:    { rows: 2, cols: 2, patterns: 6,  label: 'Fácil' },
+  medium:  { rows: 3, cols: 2, patterns: 8,  label: 'Medio' },
+  hard:    { rows: 3, cols: 3, patterns: 10, label: 'Difícil' },
+  mix:     { rows: 0, cols: 0, patterns: 6,  label: 'Mixto' },
+  infinite:{ rows: 3, cols: 3, patterns: Infinity, label: 'Infinito' }
+};
+
+// Estado general
+let panelMode        = 'easy';
+let panelRound       = 0;       // número de patrón actual
+let panelSequence    = [];      // secuencia de índices del patrón
+let panelInputIndex  = 0;       // posición que el niño está copiando
+let panelButtons     = [];      // botones del tablero
+let panelAcceptInput = false;   // ¿puede hacer clic?
+let panelPlayingBack = false;   // ¿se está reproduciendo el patrón?
+let panelCancelPlay  = false;   // para cortar animaciones
+let panelMixStep     = 0;       // usado internamente si quieres, pero aquí usamos panelRound
+
+
+function buildPanelBoard(rows, cols) {
+  if (!panelBoard) return;
+
+  panelBoard.innerHTML = '';
+  panelButtons = [];
+
+  panelBoard.style.setProperty('--panel-rows', rows);
+  panelBoard.style.setProperty('--panel-cols', cols);
+
+  const total = rows * cols;
+
+  for (let i = 0; i < total; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'panel-btn';
+    btn.type = 'button';
+    btn.dataset.index = i;
+
+    const color = PANEL_COLORS[i % PANEL_COLORS.length];
+    btn.style.setProperty('--panel-color', color);
+
+    btn.addEventListener('click', () => handlePanelClick(i));
+    panelBoard.appendChild(btn);
+    panelButtons.push(btn);
+  }
+}
+
+function panelBeepFor(index) {
+  const base = 520;
+  const freq = base + index * 60;
+  beep(freq, .12, 'sine', .18);
+}
+
+function flashButton(index, duration = 450) {
+  const btn = panelButtons[index];
+  if (!btn) return;
+  btn.classList.add('lit');
+  panelBeepFor(index);
+  setTimeout(() => {
+    btn.classList.remove('lit');
+  }, duration - 80);
+}
+
+function setPanelInteractivity(enabled) {
+  panelAcceptInput = enabled;
+  panelButtons.forEach(b => {
+    b.disabled = !enabled;
+    b.classList.toggle('disabled', !enabled);
+  });
+}
+
+function panelSleep(ms) {
+  return new Promise(resolve => {
+    setTimeout(() => resolve(), ms);
+  });
+}
+
+async function playPanelPattern() {
+  if (!panelButtons.length) return;
+  if (!isPanelActive()) return;
+
+  panelPlayingBack = true;
+  panelCancelPlay  = false;
+  setPanelInteractivity(false);
+
+  await panelSleep(600);
+  if (panelCancelPlay || !isPanelActive()) return;
+
+  for (let i = 0; i < panelSequence.length; i++) {
+    if (panelCancelPlay || !isPanelActive()) return;
+    flashButton(panelSequence[i]);
+    await panelSleep(550);
+  }
+
+  if (!isPanelActive() || panelCancelPlay) return;
+
+  panelInputIndex  = 0;
+  panelPlayingBack = false;
+  setPanelInteractivity(true);
+}
+
+
+function setupModeLayoutForMixed(round) {
+  if (round <= 2) {
+    buildPanelBoard(2, 2);
+    if (panelModeLabel) panelModeLabel.textContent = 'Modo mixto – tablero 2x2';
+  } else if (round <= 4) {
+    buildPanelBoard(3, 2);
+    if (panelModeLabel) panelModeLabel.textContent = 'Modo mixto – tablero 3x2';
+  } else {
+    buildPanelBoard(3, 3);
+    if (panelModeLabel) panelModeLabel.textContent = 'Modo mixto – tablero 3x3';
+  }
+}
+
+function updatePanelRoundText() {
+  const cfg = PANEL_CONFIG[panelMode];
+  if (!cfg) return;
+
+  if (cfg.patterns === Infinity) {
+    if (panelInfo)       panelInfo.textContent       = `Patrón ${panelRound}`;
+    if (panelRoundLabel) panelRoundLabel.textContent = `Patrón ${panelRound}`;
+  } else {
+    if (panelInfo)       panelInfo.textContent       = `Patrón ${panelRound} / ${cfg.patterns}`;
+    if (panelRoundLabel) panelRoundLabel.textContent = `Patrón ${panelRound} / ${cfg.patterns}`;
+  }
+}
+
+function startPanelMode(mode) {
+  panelMode       = mode;
+  panelSequence   = [];
+  panelRound      = 0;
+  panelInputIndex = 0;
+  panelCancelPlay = false;
+
+  const cfg = PANEL_CONFIG[mode];
+  if (panelModeLabel && cfg) {
+    panelModeLabel.textContent = `Modo: ${cfg.label}`;
+  }
+
+  if (mode === 'mix') {
+    panelBoard.innerHTML = '';
+    panelButtons = [];
+  } else {
+    buildPanelBoard(cfg.rows, cfg.cols);
+  }
+
+  updatePanelRoundText();
+
+  if (isPanelActive()) {
+    setTimeout(() => nextPanelRound(), 400);
+  }
+}
+
+function nextPanelRound() {
+  if (!isPanelActive()) return;
+
+  panelRound++;
+
+  const cfg = PANEL_CONFIG[panelMode];
+  if (!cfg) return;
+
+  if (panelMode === 'mix') {
+    if (panelRound > cfg.patterns) {
+      setPanelInteractivity(false);
+      if (panelInfo) panelInfo.textContent = '¡Superaste el modo mixto!';
+      onGameCompleted?.();
+      return;
+    }
+    setupModeLayoutForMixed(panelRound);
+  }
+
+  const totalButtons = panelButtons.length || 1;
+  const nextIndex = Math.floor(Math.random() * totalButtons);
+  panelSequence.push(nextIndex);
+
+  updatePanelRoundText();
+  playPanelPattern();
+}
+
+function handlePanelClick(index) {
+  if (!panelAcceptInput || panelPlayingBack) return;
+  if (!isPanelActive()) return;
+
+  flashButton(index);
+
+  const expected = panelSequence[panelInputIndex];
+  if (index !== expected) {
+    beep(220, .09, 'square', .18);
+    if (panelInfo) panelInfo.textContent = 'Intenta de nuevo este patrón';
+    setPanelInteractivity(false);
+    setTimeout(() => { if (isPanelActive()) playPanelPattern(); }, 800);
+    return;
+  }
+
+  panelInputIndex++;
+
+  if (panelInputIndex < panelSequence.length) return;
+
+  beep(760, .10, 'triangle', .22);
+
+  if (typeof confettiIn === 'function' && panelBoard) {
+    const rect = panelBoard.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+
+    confettiIn(panelBoard, cx, cy, 40);
+    setTimeout(() => confettiIn(panelBoard, cx, cy - 40, 40), 150);
+  }
+
+  const cfg = PANEL_CONFIG[panelMode];
+
+  if (panelMode === 'infinite') {
+    if (panelInfo) panelInfo.textContent = '¡Bien! Viene un patrón más largo';
+    setTimeout(() => { if (isPanelActive()) nextPanelRound(); }, 900);
+    return;
+  }
+
+  if (panelRound >= cfg.patterns) {
+    setPanelInteractivity(false);
+    if (panelInfo) panelInfo.textContent = '¡Muy bien, completaste este modo!';
+    onGameCompleted?.();
+  } else {
+    if (panelInfo) panelInfo.textContent = '¡Genial! Ahora un patrón más largo';
+    setTimeout(() => { if (isPanelActive()) nextPanelRound(); }, 900);
+  }
+}
+
+function stopPanelGame() {
+  panelCancelPlay  = true;
+  panelPlayingBack = false;
+  panelAcceptInput = false;
+  if (panelButtons.length) {
+    panelButtons.forEach(b => {
+      b.disabled = true;
+      b.classList.add('disabled');
+    });
+  }
+}
+
+window.startPanelMode = startPanelMode;
+window.stopPanelGame  = stopPanelGame;
+
+//#endregion
+
+//#region Rompecabezas
+const pzGrid   = document.getElementById('pz-grid');
+const pzPieces = document.getElementById('pz-pieces');
+const pzTag    = document.getElementById('pz-tag');
+const pzBase   = document.querySelector('.pz-base');
+
+const PZ_ROWS  = 3;
+const PZ_COLS  = 3;
+const PZ_TOTAL = PZ_ROWS * PZ_COLS;
+
+// imágenes disponibles
+const PZ_IMAGES = [
+  { id: 'playa',    file: 'playa-rc.png'    },
+  { id: 'granja',   file: 'granja-rc.png'   },
+  { id: 'frutas',   file: 'frutas-rc.png'   },
+  { id: 'perezoso', file: 'perezoso-rc.png' },
+  { id: 'gallinas', file: 'gallinas-rc.png' },
+  { id: 'perrogato', file: 'perro-gato-rc.png' },
+
+];
+
+// cuántos rompecabezas se juegan antes de mostrar overlay
+const PZ_PER_TURN = 3;
+
+let pzCells        = [];
+let pzPiecesEls    = [];
+let pzPlaced       = 0;
+let pzDragging     = null;
+let pzOffX = 0, pzOffY = 0;
+let pzPointerId    = null;
+
+// orden aleatorio de imágenes y estado del turno
+let pzImageOrder   = [];
+let pzImagePos     = 0;
+let pzCompletedTurn = 0;
+
+const pzCongratsAudio = new Audio('audio/congrats1.mp3');
+pzCongratsAudio.preload = 'auto';
+pzCongratsAudio.volume  = 0.95;
+
+function pzCurrentImage(){
+  const idx = pzImageOrder[pzImagePos];
+  return PZ_IMAGES[idx];
+}
+
+
+function buildPuzzleBoard(imageObj){
+  if (!pzGrid) return;
+
+  if (pzBase){
+    pzBase.style.backgroundImage = `url("img/${imageObj.file}")`;
+    pzBase.style.backgroundSize  = 'cover';
+    pzBase.style.backgroundPos   = 'center';
+    pzBase.style.opacity         = '0.45';
+  }
+
+  pzGrid.innerHTML = '';
+  pzCells = [];
+
+  for (let i = 0; i < PZ_TOTAL; i++){
+    const cell = document.createElement('div');
+    cell.className = 'pz-cell';
+    cell.dataset.index = i;
+
+    const col = i % PZ_COLS;
+    const row = Math.floor(i / PZ_ROWS);
+    const posX = (col/(PZ_COLS-1))*100;
+    const posY = (row/(PZ_ROWS-1))*100;
+
+    cell.style.setProperty('--pz-x', `${posX}%`);
+    cell.style.setProperty('--pz-y', `${posY}%`);
+
+    pzGrid.appendChild(cell);
+    pzCells.push(cell);
+  }
+}
+
+function buildPuzzlePieces(imageObj){
+  if (!pzPieces) return;
+
+  pzPieces.innerHTML = '';
+  pzPiecesEls = [];
+
+  const indexes = shuffle([...Array(PZ_TOTAL).keys()]);
+  const wrapRect = pzPieces.getBoundingClientRect();
+  const imgPath  = `img/${imageObj.file}`;
+
+  indexes.forEach(idx=>{
+    const piece = document.createElement('div');
+    piece.className = 'pz-piece';
+    piece.dataset.index = idx;
+
+    const col = idx % PZ_COLS;
+    const row = Math.floor(idx / PZ_ROWS);
+    const posX = (col/(PZ_COLS-1))*100;
+    const posY = (row/(PZ_ROWS-1))*100;
+
+    piece.style.setProperty('--pz-x', `${posX}%`);
+    piece.style.setProperty('--pz-y', `${posY}%`);
+    piece.style.backgroundImage = `url(${imgPath})`;
+
+    const pad = 16;
+    const areaW = wrapRect.width  - 100 - pad*2;
+    const areaH = wrapRect.height - 100 - pad*2;
+    const left  = pad + Math.random() * Math.max(areaW, 40);
+    const top   = pad + Math.random() * Math.max(areaH, 40);
+
+    piece.style.left = left + 'px';
+    piece.style.top  = top  + 'px';
+    piece.dataset.ox = left;
+    piece.dataset.oy = top;
+
+    piece.addEventListener('pointerdown', e=> pzOnPointerDown(e, piece));
+
+    pzPieces.appendChild(piece);
+    pzPiecesEls.push(piece);
+  });
+}
+
+function pzOnPointerDown(e, piece){
+  if (window.paused) return;
+  window.ensureAudio?.();
+
+  if (piece.dataset.placed === '1') return;
+
+  pzDragging  = piece;
+  pzPointerId = e.pointerId;
+  piece.setPointerCapture?.(e.pointerId);
+  piece.classList.add('dragging');
+
+  const rect = piece.getBoundingClientRect();
+  pzOffX = e.clientX - rect.left;
+  pzOffY = e.clientY - rect.top;
+}
+
+window.addEventListener('pointermove', e=>{
+  if (!pzDragging) return;
+  if (pzPointerId !== null && e.pointerId !== pzPointerId) return;
+
+  const wrapRect = pzPieces.getBoundingClientRect();
+  const x = e.clientX - wrapRect.left - pzOffX;
+  const y = e.clientY - wrapRect.top  - pzOffY;
+
+  pzDragging.style.left = x + 'px';
+  pzDragging.style.top  = y + 'px';
+});
+
+window.addEventListener('pointerup', e=>{
+  if (!pzDragging) return;
+  if (pzPointerId !== null && e.pointerId !== pzPointerId) return;
+
+  const piece = pzDragging;
+  pzDragging  = null;
+  pzPointerId = null;
+  piece.classList.remove('dragging');
+  piece.releasePointerCapture?.(e.pointerId);
+
+  pzHandleDrop(piece, e.clientX, e.clientY);
+});
+
+function pzCellAtPoint(x,y){
+  for (const cell of pzCells){
+    const r = cell.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom){
+      return cell;
+    }
+  }
+  return null;
+}
+
+function pzHandleDrop(piece, clientX, clientY){
+  const cell = pzCellAtPoint(clientX, clientY);
+  const pieceIndex = Number(piece.dataset.index);
+
+  if (!cell || cell.dataset.filled === '1'){
+    pzBounceBack(piece, false);
+    return;
+  }
+
+  const cellIndex = Number(cell.dataset.index);
+  const correct   = (cellIndex === pieceIndex);
+
+  if (!correct){
+    beep(220,.09,'square',.18);
+    pzBounceBack(piece, true);
+    return;
+  }
+
+  piece.dataset.placed = '1';
+  cell.dataset.filled  = '1';
+  beep(760,.10,'triangle',.22);
+
+  const currentImg = pzCurrentImage();
+  cell.classList.add('filled');
+  cell.style.backgroundImage = `url("img/${currentImg.file}")`;
+
+  piece.style.opacity = '0';
+  piece.style.pointerEvents = 'none';
+  setTimeout(()=> piece.remove(), 250);
+
+  // confetti en la celda
+  if (typeof confettiIn === 'function'){
+    const gr = pzGrid.getBoundingClientRect();
+    const cr = cell.getBoundingClientRect();
+    const cx = (cr.left - gr.left) + cr.width/2;
+    const cy = (cr.top  - gr.top) + cr.height/2;
+    confettiIn(pzGrid, cx, cy, 18);
+  }
+
+  pzPlaced++;
+  pzUpdateTag();
+
+  if (pzPlaced >= PZ_TOTAL){
+    pzOnPuzzleCompleted();
+  }
+}
+
+function pzBounceBack(piece, doShake){
+  const ox = parseFloat(piece.dataset.ox) || 0;
+  const oy = parseFloat(piece.dataset.oy) || 0;
+
+  if (doShake){
+    piece.classList.add('shake');
+    setTimeout(()=> piece.classList.remove('shake'), 220);
+  }
+
+  const rect     = piece.getBoundingClientRect();
+  const wrapRect = pzPieces.getBoundingClientRect();
+  const curX     = rect.left - wrapRect.left;
+  const curY     = rect.top  - wrapRect.top;
+  const dx       = ox - curX;
+  const dy       = oy - curY;
+
+  const anim = piece.animate(
+    [
+      { transform:'translate(0,0)' },
+      { transform:`translate(${dx}px,${dy}px)` }
+    ],
+    { duration:220, easing:'cubic-bezier(.2,.9,.2,1)' }
+  );
+  anim.onfinish = ()=>{
+    piece.style.left = ox + 'px';
+    piece.style.top  = oy + 'px';
+  };
+}
+
+function pzUpdateTag(){
+  if (!pzTag) return;
+  const totalTurn = Math.min(PZ_PER_TURN, PZ_IMAGES.length);
+  const currentNum = pzCompletedTurn + 1;
+  pzTag.textContent =
+    `Rompecabezas ${currentNum} / ${totalTurn} – Piezas correctas: ${pzPlaced} / ${PZ_TOTAL}`;
+}
+
+function pzBuildCurrent(){
+  const img = pzCurrentImage();
+  pzPlaced = 0;
+  buildPuzzleBoard(img);
+  setTimeout(()=> buildPuzzlePieces(img), 50);
+  pzUpdateTag();
+}
+
+function pzOnPuzzleCompleted(){
+  pzCompletedTurn++;
+
+  const totalTurn = Math.min(PZ_PER_TURN, PZ_IMAGES.length);
+
+  const noMoreImages = (pzImagePos >= pzImageOrder.length - 1);
+  const endOfTurn    = (pzCompletedTurn >= totalTurn) || noMoreImages;
+
+  if (!endOfTurn){
+    // siguiente rompecabezas dentro del mismo turno
+    if (pzTag) pzTag.textContent = '¡Muy bien! Vamos con otro rompecabezas.';
+    setTimeout(()=>{
+      pzImagePos++;
+      pzBuildCurrent();
+    }, 900);
+    return;
+  }
+
+  if (pzTag) pzTag.textContent = '¡Excelente, completaste todos los rompecabezas de este turno!';
+
+  const launchOverlayAndRestart = () => {
+    if (typeof showOverlay === 'function') {
+      showOverlay(8, () => {
+        startPuzzle();
+      });
+    } else {
+      startPuzzle();
+    }
+  };
+
+  try {
+    pzCongratsAudio.currentTime = 0;
+    pzCongratsAudio.onended = () => {
+      pzCongratsAudio.onended = null;
+      launchOverlayAndRestart();
+    };
+    pzCongratsAudio.play().catch(() => {
+      launchOverlayAndRestart();
+    });
+  } catch {
+    launchOverlayAndRestart();
+  }
+}
+
+
+function startPuzzle(){
+  pzPlaced        = 0;
+  pzCompletedTurn = 0;
+
+  // crear orden aleatorio de imágenes
+  const idxs = [];
+  for (let i = 0; i < PZ_IMAGES.length; i++) idxs.push(i);
+  pzImageOrder = (typeof shuffle === 'function') ? shuffle(idxs) : idxs.sort(()=>Math.random()-0.5);
+  pzImagePos   = 0;
+
+  pzBuildCurrent();
+}
+
+window.startPuzzle = startPuzzle;
+
+//#endregion
+
 //#region Mascota compu
 function bindMascotClick(){
   const m = document.getElementById('mascota');
@@ -1146,9 +2117,8 @@ function bindMascotClick(){
 document.addEventListener('DOMContentLoaded', bindMascotClick);
 //#endregion
 
-// Recalcula al redimensionar
 window.addEventListener('resize', ()=>{
   if ($('#scr-cheese')?.classList.contains('active')) {
-    startCheese(false); // re-posiciona sin resetear el contador
+    startCheese(false);
   }
 });
