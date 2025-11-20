@@ -61,7 +61,7 @@ function showOverlay(seconds=8, onContinue){
 //#endregion
 
 //#region Ruteo
-const SCREENS = ['balloons','keys','drag','clicks','maze','cheese','sort','habitats','dinos','panel'];
+const SCREENS = ['balloons','keys','drag','clicks','maze','cheese','sort','habitats','dinos','panel','puzzle'];
 let currentGameId = null;
 
 function openScreen(name){
@@ -69,7 +69,9 @@ function openScreen(name){
   $('#home')?.classList.remove('active');
   SCREENS.forEach(id => $('#scr-'+id)?.classList.remove('active'));
   $('#scr-'+name)?.classList.add('active');
-  const map={balloons:'Globos',keys:'Piano',drag:'Casitas',clicks:'Clic',maze:'Laberinto',cheese:'Ratón y Queso', sort:'Sorting de Colores', habitats:'Habitats de animales', dinos:'Dino dig desentierra el dinosaurio', panel:'Panel Luminoso de colores'};
+  const map={balloons:'Globos',keys:'Piano',drag:'Casitas',clicks:'Clic',maze:'Laberinto',cheese:'Ratón y Queso', 
+    sort:'Sorting de Colores', habitats:'Habitats de animales', dinos:'Dino dig desentierra el dinosaurio', 
+    panel:'Panel Luminoso de colores', puzzle:'Rompecabezas'};
   $('#tagMode').textContent='Modo: '+(map[name]||'Inicio');
 
   // AUTO START de cada juego
@@ -99,7 +101,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 //#region 3 Juegos random
 // ==== Lista de juegos disponibles (agrega aquí los nuevos) ====
-const PLAY_SET = ['balloons','drag','maze','cheese','sort','habitats','dinos','panel'];
+const PLAY_SET = ['balloons','drag','maze','cheese','sort','habitats','dinos','panel','puzzle'];
 
 let playOrder = [];
 let playIndex = 0;
@@ -127,6 +129,8 @@ function launchCurrentPlayGame(){
   else if (id === 'habitats') startHabitats();
   else if (id === 'dinos')    startDinos();
   else if (id === 'panel')    startPanelMode();
+  else if (id === 'puzzle')   startPuzzle();
+
 
 
 }
@@ -164,7 +168,9 @@ function restartCurrentGame(){
       isActive('maze')    ?'maze':
       isActive('cheese')  ?'cheese': null;
       isActive('dinos')   ?'dinos': null;
-      isActive('panel')  ?'panel': null;
+      isActive('panel')   ?'panel': null;
+      isActive('puzzle')  ?'puzle': null;
+
 
   }
   if(currentGameId==='balloons'){ openScreen('balloons'); startBalloons(); }
@@ -175,8 +181,7 @@ function restartCurrentGame(){
   else if(currentGameId==='cheese'){ openScreen('cheese'); startCheese(true); }
   else if(currentGameId==='dinos'){ openScreen('dinos'); startDinos(true); }
   else if(currentGameId==='panel'){ openScreen('panel'); startPanelMode(true); }
-
-
+  else if(currentGameId==='puzzle'){ openScreen('puzzle'); startPuzzle(true); }
 }
 //#endregion
 
